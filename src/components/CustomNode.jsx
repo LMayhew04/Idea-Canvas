@@ -16,9 +16,10 @@ const CustomNode = React.memo(({ data, id, selected }) => {
       data.onLevelChange(id, evt.target.value);
     }
   }, [id, data.onLevelChange]);
-
   const handleInputClick = useCallback((evt) => {
     evt.stopPropagation(); // Prevent node selection when clicking input
+    // Force focus on the textarea for editing
+    evt.target.focus();
   }, []);
 
   const handleSelectClick = useCallback((evt) => {
@@ -31,7 +32,6 @@ const CustomNode = React.memo(({ data, id, selected }) => {
     color: '#96ceb4',
     bgColor: '#f0fff4'
   };
-
   // 8 compass positions mapped to ReactFlow's Handle positions
   const handlePositions = [
     { pos: Position.Top, id: 'n', style: { left: '50%', top: -6, transform: 'translateX(-50%)' } },
