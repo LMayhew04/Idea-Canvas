@@ -277,9 +277,8 @@ const IdeaCanvas = () => {
       return node;
     }));
   }, [setNodes]);
-
   // Canvas history management using custom hook
-  const { addToHistory, handleUndo, handleRedo, canUndo, canRedo } = useCanvasHistory({
+  const { addToHistory: rawAddToHistory, handleUndo, handleRedo, canUndo, canRedo } = useCanvasHistory({
     nodes,
     edges,
     setNodes,
@@ -289,14 +288,34 @@ const IdeaCanvas = () => {
     hierarchyLevels: HIERARCHY_LEVELS,
     showHierarchy
   });
-  // Add nodes to history when they change - Only after initialization
+
+  // Wrap addToHistory in useCallback for stable reference
+  const addToHistory = useCallback((currentNodes, currentEdges) => {
+    rawAddToHistory(currentNodes, currentEdges);
+  }, [rawAddToHistory]);
+
+  // Create debounced version of addToHistory to prevent excessive history updates during text editing
+  const debouncedAddToHistory = useMemo(
+    () => debounce((currentNodes, currentEdges) => {
+      addToHistory(currentNodes, currentEdges);
+    }, 750), // 750ms delay
+    [addToHistory]
+  );
+  // Add nodes to history when they change - Only after initialization (debounced)
   useEffect(() => {
     if (!isInitialized || isLoading) return;
     
     if (nodes.length > 0) {
-      addToHistory(nodes, edges);
+      debouncedAddToHistory(nodes, edges);
     }
-  }, [nodes, edges, addToHistory, isInitialized, isLoading]);
+  }, [nodes, edges, debouncedAddToHistory, isInitialized, isLoading]);
+
+  // Cleanup debounced function on unmount
+  useEffect(() => {
+    return () => {
+      debouncedAddToHistory.cancel();
+    };
+  }, [debouncedAddToHistory]);
 
   // Update hierarchy levels
   const onUpdateHierarchy = useCallback((newLevels) => {

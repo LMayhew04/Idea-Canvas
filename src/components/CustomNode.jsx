@@ -49,11 +49,11 @@ const CustomNode = React.memo(({ data, id, selected }) => {
     { pos: Position.BottomLeft, id: 'sw', style: { left: -6, bottom: -6 } },
     { pos: Position.Left, id: 'w', style: { left: -6, top: '50%', transform: 'translateY(-50%)' } },
     { pos: Position.TopLeft, id: 'nw', style: { left: -6, top: -6 } },
-  ];
-  return (
+  ];  return (
     <div
       className="custom-node"
-      data-testid={`custom-node-${id}`}      style={{
+      data-testid={`custom-node-${id}`}
+      style={{
         minWidth: '160px',
         minHeight: data.showHierarchy ? '90px' : '70px',
         maxWidth: '250px',
@@ -110,53 +110,57 @@ const CustomNode = React.memo(({ data, id, selected }) => {
           />
         </React.Fragment>
       ))}      {/* Node Label Input */}
-      <textarea
-        className="node-input"
-        value={data.label || ''}
-        onChange={onLabelChange}
-        onClick={handleInputClick}
-        onFocus={handleInputFocus}
-        onMouseDown={handleInputClick}
-        spellCheck={false}
-        placeholder="Enter idea..."
-        style={{
-          border: 'none',
-          outline: 'none',
-          fontSize: '16px',
-          width: '100%',
-          minHeight: '24px',
-          maxHeight: '100px',
-          background: 'transparent',
-          textAlign: 'center',
-          fontWeight: 600,
-          color: '#373737',
-          marginBottom: data.showHierarchy ? '8px' : '0px',
-          transition: 'margin-bottom 0.2s ease',
-          resize: 'none',
-          overflow: 'hidden',
-          fontFamily: 'inherit',
-          cursor: 'text',
-          pointerEvents: 'all',
-          userSelect: 'text'
-        }}
-        rows={1}
-        onInput={(e) => {
-          e.stopPropagation();
-          e.target.style.height = 'auto';
-          e.target.style.height = e.target.scrollHeight + 'px';
-        }}
-      />
-      
-      {/* Hierarchy Level Selector - Conditionally Rendered */}
+      <div data-no-drag="true" style={{ width: '100%' }}>
+        <textarea
+          className="node-input"
+          value={data.label || ''}
+          onChange={onLabelChange}
+          onClick={handleInputClick}
+          onFocus={handleInputFocus}
+          onMouseDown={handleInputClick}
+          spellCheck={false}
+          placeholder="Enter idea..."
+          style={{
+            border: 'none',
+            outline: 'none',
+            fontSize: '16px',
+            width: '100%',
+            minHeight: '24px',
+            maxHeight: '100px',
+            background: 'transparent',
+            textAlign: 'center',
+            fontWeight: 600,
+            color: '#373737',
+            marginBottom: data.showHierarchy ? '8px' : '0px',
+            transition: 'margin-bottom 0.2s ease',
+            resize: 'none',
+            overflow: 'hidden',
+            fontFamily: 'inherit',
+            cursor: 'text',
+            pointerEvents: 'all',
+            userSelect: 'text'
+          }}
+          rows={1}
+          onInput={(e) => {
+            e.stopPropagation();
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+          }}
+        />
+      </div>
+        {/* Hierarchy Level Selector - Conditionally Rendered */}
       {data.showHierarchy && (
-        <div style={{
-          fontSize: 12,
-          color: levelInfo.color,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          marginTop: '4px'
-        }}>
+        <div 
+          data-no-drag="true"
+          style={{
+            fontSize: 12,
+            color: levelInfo.color,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: '4px'
+          }}
+        >
           Level:&nbsp;
           <select
             value={data.level || 4}
