@@ -307,25 +307,41 @@ describe('IdeaCanvas Component', () => {
       expect(screen.getByText('Imported Node')).toBeInTheDocument();
     });
   });  describe('Test Case 5: In-Node Text Editing', () => {
-    test('allows user to edit text content within nodes', async () => {
+    test('verifies text editing persists through component re-render', async () => {
       // Arrange: Render component
       render(<App />);
       
-      // Act: Find a textarea directly by its value
+      // Arrange: Find the textarea for an existing node (Project Vision)
       const textarea = screen.getByDisplayValue('Project Vision');
       expect(textarea).toBeInTheDocument();
       expect(textarea.tagName).toBe('TEXTAREA');
       
-      // Act: Change the text value using fireEvent for more direct testing
+      // Act (Part 1 - Edit Text): Simulate user clearing textarea and typing new value
       await act(async () => {
-        fireEvent.change(textarea, { target: { value: 'My updated idea' } });
+        // Clear the existing text and type new value
+        fireEvent.change(textarea, { target: { value: '' } });
+        fireEvent.change(textarea, { target: { value: 'Updated Vision' } });
       });
       
-      // Assert: Verify textarea contains the new text
-      expect(textarea.value).toBe('My updated idea');
+      // Verify initial change took effect
+      expect(textarea.value).toBe('Updated Vision');
       
-      // Also verify the change propagated to the component state
-      expect(screen.getByDisplayValue('My updated idea')).toBeInTheDocument();
+      // Act (Part 2 - Force Re-render): Click "Add Node" button to cause application re-render
+      const addNodeButton = screen.getByText('Add Node');
+      await act(async () => {
+        fireEvent.click(addNodeButton);
+      });
+      
+      // Wait for state updates to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // Assert (The True Test): After re-render, find original textarea and verify text persists
+      const textareaAfterRerender = screen.getByDisplayValue('Updated Vision');
+      expect(textareaAfterRerender).toBeInTheDocument();
+      expect(textareaAfterRerender.value).toBe('Updated Vision');
+      
+      // Additional verification: The new node should also be present
+      expect(screen.getByText('New Idea')).toBeInTheDocument();
     });
 
     test('handles multiple text edits and maintains state', async () => {

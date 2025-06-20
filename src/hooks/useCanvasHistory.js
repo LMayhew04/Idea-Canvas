@@ -176,13 +176,13 @@ const useCanvasHistory = ({
   // Computed flags for UI state
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
-
   return {
     addToHistory,
     handleUndo,
     handleRedo,
     canUndo,
-    canRedo
+    canRedo,
+    historyIndex
   };
 };
 

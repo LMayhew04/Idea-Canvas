@@ -276,9 +276,8 @@ const IdeaCanvas = () => {
       }
       return node;
     }));
-  }, [setNodes]);
-  // Canvas history management using custom hook
-  const { addToHistory: rawAddToHistory, handleUndo, handleRedo, canUndo, canRedo } = useCanvasHistory({
+  }, [setNodes]);  // Canvas history management using custom hook
+  const { addToHistory: rawAddToHistory, handleUndo, handleRedo, canUndo, canRedo, historyIndex } = useCanvasHistory({
     nodes,
     edges,
     setNodes,
@@ -289,10 +288,10 @@ const IdeaCanvas = () => {
     showHierarchy
   });
 
-  // Wrap addToHistory in useCallback for stable reference
+  // Wrap addToHistory in useCallback for stable reference with historyIndex dependency
   const addToHistory = useCallback((currentNodes, currentEdges) => {
     rawAddToHistory(currentNodes, currentEdges);
-  }, [rawAddToHistory]);
+  }, [rawAddToHistory, historyIndex]);
 
   // Create debounced version of addToHistory to prevent excessive history updates during text editing
   const debouncedAddToHistory = useMemo(
