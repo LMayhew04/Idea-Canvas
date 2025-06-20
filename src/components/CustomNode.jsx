@@ -112,6 +112,7 @@ const CustomNode = React.memo(({ data, id, selected }) => {
       ))}      {/* Node Label Input */}
       <div data-no-drag="true" style={{ width: '100%' }}>
         <textarea
+          key={`textarea-${id}-${data.label}`}
           className="node-input"
           value={data.label || ''}
           onChange={onLabelChange}

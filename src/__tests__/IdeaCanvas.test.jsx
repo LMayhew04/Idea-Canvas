@@ -314,16 +314,20 @@ describe('IdeaCanvas Component', () => {
       // Arrange: Find the textarea for an existing node (Project Vision)
       const textarea = screen.getByDisplayValue('Project Vision');
       expect(textarea).toBeInTheDocument();
-      expect(textarea.tagName).toBe('TEXTAREA');
-      
-      // Act (Part 1 - Edit Text): Simulate user clearing textarea and typing new value
+      expect(textarea.tagName).toBe('TEXTAREA');      // Act (Part 1 - Edit Text): Simulate user editing text more realistically
       await act(async () => {
-        // Clear the existing text and type new value
-        fireEvent.change(textarea, { target: { value: '' } });
+        // Focus the textarea first
+        textarea.focus();
+        // Clear all existing text
+        textarea.setSelectionRange(0, textarea.value.length);
+        // Simulate typing new text
+        fireEvent.input(textarea, { target: { value: 'Updated Vision' } });
+        // Also trigger change event to ensure React sees the change
         fireEvent.change(textarea, { target: { value: 'Updated Vision' } });
       });
       
       // Verify initial change took effect
+      await new Promise(resolve => setTimeout(resolve, 10));
       expect(textarea.value).toBe('Updated Vision');
       
       // Act (Part 2 - Force Re-render): Click "Add Node" button to cause application re-render
@@ -339,9 +343,8 @@ describe('IdeaCanvas Component', () => {
       const textareaAfterRerender = screen.getByDisplayValue('Updated Vision');
       expect(textareaAfterRerender).toBeInTheDocument();
       expect(textareaAfterRerender.value).toBe('Updated Vision');
-      
-      // Additional verification: The new node should also be present
-      expect(screen.getByText('New Idea')).toBeInTheDocument();
+        // Additional verification: A new node should also be present
+      expect(screen.getAllByText('New Idea')).toHaveLength(2); // One from before test, one added during test
     });
 
     test('handles multiple text edits and maintains state', async () => {

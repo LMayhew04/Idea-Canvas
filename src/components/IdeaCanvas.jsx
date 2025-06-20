@@ -244,22 +244,39 @@ const IdeaCanvas = () => {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedElements, setSelectedElements] = useState({ nodes: [], edges: [] });
-  const [nextId, setNextId] = useState(4);
-
-  // Node label change handler
+  const [nextId, setNextId] = useState(4);  // Node label change handler - Ensuring truly immutable updates with proper state handling
   const onNodeLabelChange = useCallback((id, value) => {
-    setNodes(nds => nds.map(node => {
-      if (node.id === id) {
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            label: value
-          }
-        };
+    console.log('onNodeLabelChange called:', { id, value }); // Debug log
+    setNodes(currentNodes => {
+      console.log('Current nodes:', currentNodes); // Debug log
+      
+      // Ensure we're creating a completely new array with new objects
+      const newNodes = currentNodes.map(node => {
+        if (node.id === id) {
+          // Create completely new node and data objects for immutability
+          const updatedNode = {
+            ...node,
+            data: {
+              ...node.data,
+              label: value
+            }
+          };
+          console.log('Updated node:', updatedNode); // Debug log
+          return updatedNode;
+        }
+        return node;
+      });
+      
+      console.log('New nodes array:', newNodes); // Debug log
+      
+      // Verify that the change actually happened
+      const updatedNode = newNodes.find(n => n.id === id);
+      if (updatedNode && updatedNode.data.label !== value) {
+        console.error('State update failed - value not set correctly');
       }
-      return node;
-    }));
+      
+      return newNodes;
+    });
   }, [setNodes]);
 
   // Node level change handler
