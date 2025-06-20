@@ -242,9 +242,8 @@ const IdeaCanvas = () => {
 
   const nodeTypes = { custom: CustomNode };
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);  const [selectedNodes, setSelectedNodes] = useState([]);
-  const [selectedEdges, setSelectedEdges] = useState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [selectedElements, setSelectedElements] = useState({ nodes: [], edges: [] });
   const [nextId, setNextId] = useState(4);
 
   // Node label change handler
@@ -318,33 +317,9 @@ const IdeaCanvas = () => {
       data: { ...node.data, showHierarchy: show }
     })));
   }, [setNodes]);
-
-  // Node selection handler - Fixed to properly handle selection
-  const handleNodeClick = useCallback((evt, node) => {
-    // Don't select if clicking on input elements
-    if (evt.target.tagName === 'TEXTAREA' || evt.target.tagName === 'SELECT' || evt.target.tagName === 'INPUT') {
-      return;
-    }
-    
-    if (evt.ctrlKey || evt.metaKey) {
-      setSelectedNodes(prev => {
-        if (prev.includes(node.id)) {
-          return prev.filter(id => id !== node.id);
-        } else {
-          return [...prev, node.id];
-        }
-      });
-    } else {
-      setSelectedNodes([node.id]);
-    }
-    setSelectedEdges([]);
-  }, []);
-
-  // Edge selection handler
-  const handleEdgeClick = useCallback((evt, edge) => {
-    evt.stopPropagation();
-    setSelectedEdges([edge.id]);
-    setSelectedNodes([]);
+  // Handle selection changes - Use ReactFlow's built-in selection system
+  const onSelectionChange = useCallback(({ nodes, edges }) => {
+    setSelectedElements({ nodes: nodes || [], edges: edges || [] });
   }, []);
 
   // Connection handler
@@ -377,25 +352,27 @@ const IdeaCanvas = () => {
     setNodes(nodes => [...nodes, newNode]);
     setNextId(prev => prev + 1);
   }, [setNodes, nextId, HIERARCHY_LEVELS, showHierarchy]);
-
   // Delete selected edges and nodes
   const handleDeleteSelected = useCallback(() => {
-    if (selectedEdges.length > 0) {
-      setEdges(edges => edges.filter(edge => !selectedEdges.includes(edge.id)));
-      setSelectedEdges([]);
+    const selectedNodeIds = selectedElements.nodes.map(n => n.id);
+    const selectedEdgeIds = selectedElements.edges.map(e => e.id);
+    
+    if (selectedEdgeIds.length > 0) {
+      setEdges(edges => edges.filter(edge => !selectedEdgeIds.includes(edge.id)));
     }
-    if (selectedNodes.length > 0) {
-      setNodes(nodes => nodes.filter(node => !selectedNodes.includes(node.id)));
+    if (selectedNodeIds.length > 0) {
+      setNodes(nodes => nodes.filter(node => !selectedNodeIds.includes(node.id)));
       setEdges(edges => edges.filter(edge => 
-        !selectedNodes.includes(edge.source) && !selectedNodes.includes(edge.target)
+        !selectedNodeIds.includes(edge.source) && !selectedNodeIds.includes(edge.target)
       ));
-      setSelectedNodes([]);
     }
-  }, [selectedEdges, selectedNodes, setEdges, setNodes]);
-
+  }, [selectedElements, setEdges, setNodes]);
   // Handle keyboard shortcuts
   const handleKeyDown = useCallback((evt) => {
-    if ((evt.key === 'Delete' || evt.key === 'Backspace') && (selectedEdges.length > 0 || selectedNodes.length > 0)) {
+    const selectedNodeIds = selectedElements.nodes.map(n => n.id);
+    const selectedEdgeIds = selectedElements.edges.map(e => e.id);
+    
+    if ((evt.key === 'Delete' || evt.key === 'Backspace') && (selectedEdgeIds.length > 0 || selectedNodeIds.length > 0)) {
       // Don't delete if user is typing in an input field
       if (evt.target.tagName === 'TEXTAREA' || evt.target.tagName === 'INPUT' || evt.target.tagName === 'SELECT') {
         return;
@@ -403,7 +380,7 @@ const IdeaCanvas = () => {
       evt.preventDefault();
       handleDeleteSelected();
     }
-  }, [selectedEdges, selectedNodes, handleDeleteSelected]);
+  }, [selectedElements, handleDeleteSelected]);
 
   // Add keyboard event listener
   React.useEffect(() => {
@@ -472,45 +449,38 @@ const IdeaCanvas = () => {
       alert('Failed to load canvas from localStorage.');
     }
   }, [savedData, setNodes, setEdges, HIERARCHY_LEVELS, showHierarchy]);
-
-  // Clear selection
+  // Clear selection - No longer needed as ReactFlow handles this
   const clearSelection = useCallback(() => {
-    setSelectedNodes([]);
-    setSelectedEdges([]);
+    // ReactFlow will handle clearing selection automatically
   }, []);
-
   // Prepare nodes with proper data and event handlers
   const processedNodes = useMemo(() => {
     return nodes.map(node => ({
       ...node,
-      selected: selectedNodes.includes(node.id),
       data: {
         ...node.data,
         onChange: onNodeLabelChange,
         onLevelChange: onNodeLevelChange,
-        hierarchyLevels: HIERARCHY_LEVELS,
-        showHierarchy: showHierarchy,
+        hierarchyLevels: HIERARCHY_LEVELS,        showHierarchy: showHierarchy,
       }
     }));
-  }, [nodes, selectedNodes, onNodeLabelChange, onNodeLevelChange, HIERARCHY_LEVELS, showHierarchy]);
+  }, [nodes, onNodeLabelChange, onNodeLevelChange, HIERARCHY_LEVELS, showHierarchy]);
 
-  // Prepare edges with selection state
+  // Prepare edges with proper data - ReactFlow handles selection state
   const processedEdges = useMemo(() => {
     return edges.map(edge => ({
       ...edge,
-      selected: selectedEdges.includes(edge.id),
       style: {
         ...edge.style,
-        stroke: selectedEdges.includes(edge.id) ? '#ff6b6b' : '#b1b1b7',
-        strokeWidth: selectedEdges.includes(edge.id) ? 3 : 2,
+        stroke: '#b1b1b7',
+        strokeWidth: 2,
       }
     }));
-  }, [edges, selectedEdges]);
+  }, [edges]);
 
-  // Pane click handler
+  // Pane click handler - ReactFlow handles clearing selection
   const handlePaneClick = useCallback(() => {
-    setSelectedNodes([]);
-    setSelectedEdges([]);
+    // ReactFlow handles clearing selection automatically
   }, []);
 
   // Virtualization settings
@@ -761,17 +731,16 @@ const IdeaCanvas = () => {
           }}
         >
           Hierarchy Settings
-        </button>
-        <button
+        </button>        <button
           onClick={handleDeleteSelected}
-          disabled={selectedEdges.length === 0 && selectedNodes.length === 0}
+          disabled={selectedElements.nodes.length === 0 && selectedElements.edges.length === 0}
           style={{
-            backgroundColor: selectedEdges.length > 0 || selectedNodes.length > 0 ? '#ff6b6b' : '#ccc',
+            backgroundColor: selectedElements.nodes.length > 0 || selectedElements.edges.length > 0 ? '#ff6b6b' : '#ccc',
             color: 'white',
             border: 'none',
             padding: '8px 12px',
             borderRadius: 5,
-            cursor: selectedEdges.length > 0 || selectedNodes.length > 0 ? 'pointer' : 'not-allowed',
+            cursor: selectedElements.nodes.length > 0 || selectedElements.edges.length > 0 ? 'pointer' : 'not-allowed',
             fontSize: 14,
             fontWeight: 600
           }}
@@ -861,10 +830,8 @@ const IdeaCanvas = () => {
           onChange={handleImport}
           style={{ display: 'none' }}
         />
-      </div>
-
-      {/* Selection Info */}
-      {(selectedNodes.length > 0 || selectedEdges.length > 0) && (
+      </div>      {/* Selection Info */}
+      {(selectedElements.nodes.length > 0 || selectedElements.edges.length > 0) && (
         <div style={{
           position: 'absolute',
           top: 70,
@@ -877,23 +844,21 @@ const IdeaCanvas = () => {
           fontSize: 12,
           color: '#666'
         }}>
-          {selectedNodes.length > 0 && `${selectedNodes.length} node(s) selected`}
-          {selectedEdges.length > 0 && `${selectedEdges.length} edge(s) selected`}
+          {selectedElements.nodes.length > 0 && `${selectedElements.nodes.length} node(s) selected`}
+          {selectedElements.edges.length > 0 && `${selectedElements.edges.length} edge(s) selected`}
           <div style={{ fontSize: 11, marginTop: 4 }}>
             Press Delete or Backspace to remove selected items
           </div>
         </div>
       )}
-      
-      <ReactFlow
+        <ReactFlow
         nodes={visibleNodes}
         edges={processedEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodeClick={handleNodeClick}
-        onEdgeClick={handleEdgeClick}
+        onSelectionChange={onSelectionChange}
         onPaneClick={handlePaneClick}
         fitView
         fitViewOptions={{ padding: 0.2 }}
@@ -901,7 +866,8 @@ const IdeaCanvas = () => {
         multiSelectionKeyCode={['Control', 'Meta']}
         nodesDraggable={true}
         nodesConnectable={true}
-        elementsSelectable={true}        style={{
+        elementsSelectable={true}
+        style={{
           width: '100vw',
           height: '100vh',
           background: '#fafbfc'
