@@ -311,56 +311,69 @@ describe('IdeaCanvas Component', () => {
       // Arrange: Render component
       render(<App />);
       
-      try {
-        // Act: Find a textarea directly by its value
-        const textarea = screen.getByDisplayValue('Project Vision');
-        
-        // Act: Change the text value using userEvent for more realistic interaction
-        const user = userEvent.setup();
-        await act(async () => {
-          await user.clear(textarea);
-          await user.type(textarea, 'My updated idea');
-        });
-        
-        // Assert: Verify textarea contains the new text
-        expect(textarea.value).toBe('My updated idea');
-      } catch (error) {
-        // If DOM manipulation fails, skip this test in the test environment
-        console.warn('DOM manipulation test skipped due to environment limitations:', error.message);
-        expect(true).toBe(true); // Pass the test
-      }
+      // Act: Find a textarea directly by its value
+      const textarea = screen.getByDisplayValue('Project Vision');
+      expect(textarea).toBeInTheDocument();
+      expect(textarea.tagName).toBe('TEXTAREA');
+      
+      // Act: Change the text value using fireEvent for more direct testing
+      await act(async () => {
+        fireEvent.change(textarea, { target: { value: 'My updated idea' } });
+      });
+      
+      // Assert: Verify textarea contains the new text
+      expect(textarea.value).toBe('My updated idea');
+      
+      // Also verify the change propagated to the component state
+      expect(screen.getByDisplayValue('My updated idea')).toBeInTheDocument();
     });
 
     test('handles multiple text edits and maintains state', async () => {
       // Arrange: Render component
       render(<App />);
       
-      try {
-        // Act: Edit first node textarea
-        const firstTextarea = screen.getByDisplayValue('Project Vision');
-        const user = userEvent.setup();
-        
-        await act(async () => {
-          await user.clear(firstTextarea);
-          await user.type(firstTextarea, 'First Edit');
-        });
-        
-        // Act: Edit second node textarea
-        const secondTextarea = screen.getByDisplayValue('Milestone A');
-        
-        await act(async () => {
-          await user.clear(secondTextarea);
-          await user.type(secondTextarea, 'Second Edit');
-        });
-        
-        // Assert: Verify both textareas maintain their values
-        expect(firstTextarea.value).toBe('First Edit');
-        expect(secondTextarea.value).toBe('Second Edit');
-      } catch (error) {
-        // If DOM manipulation fails, skip this test in the test environment
-        console.warn('DOM manipulation test skipped due to environment limitations:', error.message);
-        expect(true).toBe(true); // Pass the test
-      }
+      // Act: Edit first node textarea
+      const firstTextarea = screen.getByDisplayValue('Project Vision');
+      
+      await act(async () => {
+        fireEvent.change(firstTextarea, { target: { value: 'First Edit' } });
+      });
+      
+      // Act: Edit second node textarea
+      const secondTextarea = screen.getByDisplayValue('Milestone A');
+      
+      await act(async () => {
+        fireEvent.change(secondTextarea, { target: { value: 'Second Edit' } });
+      });
+      
+      // Assert: Verify both textareas maintain their values
+      expect(firstTextarea.value).toBe('First Edit');
+      expect(secondTextarea.value).toBe('Second Edit');
+      
+      // Also verify both changes are maintained in the DOM
+      expect(screen.getByDisplayValue('First Edit')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Second Edit')).toBeInTheDocument();
+    });
+
+    test('textarea focuses and allows text selection when clicked', async () => {
+      // Arrange: Render component
+      render(<App />);
+      
+      // Act: Find and click on textarea
+      const textarea = screen.getByDisplayValue('Project Vision');
+      
+      await act(async () => {
+        fireEvent.click(textarea);
+      });
+      
+      // Assert: Verify textarea properties are set for editing
+      expect(textarea).toHaveStyle('cursor: text');
+      expect(textarea).toHaveStyle('user-select: text');
+      expect(textarea).toHaveStyle('pointer-events: all');
+      
+      // Verify that the textarea is not disabled and is editable
+      expect(textarea).not.toBeDisabled();
+      expect(textarea.readOnly).toBe(false);
     });
   });
   describe('Additional Integration Tests', () => {

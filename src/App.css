@@ -66,11 +66,15 @@
 /* Controls panel styling */
 .controls-panel {
   position: absolute;
-  top: 15px;
-  left: 15px;
+  top: 10px;
+  left: 10px;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   z-index: 1000;
-  max-width: calc(100vw - 30px);
+  max-width: calc(100vw - 20px);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }

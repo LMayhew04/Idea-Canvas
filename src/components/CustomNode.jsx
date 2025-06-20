@@ -15,11 +15,18 @@ const CustomNode = React.memo(({ data, id, selected }) => {
     if (data.onLevelChange) {
       data.onLevelChange(id, evt.target.value);
     }
-  }, [id, data.onLevelChange]);
-  const handleInputClick = useCallback((evt) => {
+  }, [id, data.onLevelChange]);  const handleInputClick = useCallback((evt) => {
     evt.stopPropagation(); // Prevent node selection when clicking input
-    // Force focus on the textarea for editing
-    evt.target.focus();
+    // Ensure the textarea is focused and ready for editing
+    const target = evt.target;
+    setTimeout(() => {
+      target.focus();
+      target.select(); // Select all text for easy editing
+    }, 0);
+  }, []);
+
+  const handleInputFocus = useCallback((evt) => {
+    evt.stopPropagation(); // Prevent node selection when focusing input
   }, []);
 
   const handleSelectClick = useCallback((evt) => {
@@ -46,8 +53,7 @@ const CustomNode = React.memo(({ data, id, selected }) => {
   return (
     <div
       className="custom-node"
-      data-testid={`custom-node-${id}`}
-      style={{
+      data-testid={`custom-node-${id}`}      style={{
         minWidth: '160px',
         minHeight: data.showHierarchy ? '90px' : '70px',
         maxWidth: '250px',
@@ -59,11 +65,10 @@ const CustomNode = React.memo(({ data, id, selected }) => {
           ? `0 0 0 4px ${levelInfo.color}44`
           : '0 2px 10px rgba(80, 80, 100, 0.12)',
         position: 'relative',
-        userSelect: 'none',
         transition: 'all 0.2s ease',
-        cursor: 'pointer'
+        cursor: 'default'
       }}
-    >      {/* Connection Handles - Both source and target handles */}
+    >{/* Connection Handles - Both source and target handles */}
       {handlePositions.map(({ pos, id: handleId, style }) => (
         <React.Fragment key={handleId}>          <Handle
             type="source"
@@ -110,7 +115,7 @@ const CustomNode = React.memo(({ data, id, selected }) => {
         value={data.label || ''}
         onChange={onLabelChange}
         onClick={handleInputClick}
-        onFocus={handleInputClick}
+        onFocus={handleInputFocus}
         onMouseDown={handleInputClick}
         spellCheck={false}
         placeholder="Enter idea..."

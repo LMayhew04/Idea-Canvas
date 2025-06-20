@@ -862,8 +862,8 @@ const IdeaCanvas = () => {
       {(selectedElements.nodes.length > 0 || selectedElements.edges.length > 0) && (
         <div style={{
           position: 'absolute',
-          top: 70,
-          left: 15,
+          top: 60,
+          left: 10,
           zIndex: 10,
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
           padding: 8,
@@ -878,7 +878,7 @@ const IdeaCanvas = () => {
             Press Delete or Backspace to remove selected items
           </div>
         </div>
-      )}      <ReactFlow
+      )}<ReactFlow
         nodes={visibleNodes}
         edges={processedEdges}
         nodeTypes={nodeTypes}
@@ -889,7 +889,7 @@ const IdeaCanvas = () => {
         onPaneClick={handlePaneClick}
         isValidConnection={isValidConnection}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={{ padding: 0.05, includeHiddenNodes: false }}
         deleteKeyCode={['Delete', 'Backspace']}
         multiSelectionKeyCode={['Control', 'Meta']}
         nodesDraggable={true}
@@ -901,10 +901,9 @@ const IdeaCanvas = () => {
           background: '#fafbfc'
         }}
       >
-        <Background gap={28} size={2} />
-        <Controls
+        <Background gap={28} size={2} />        <Controls
           showInteractive={true}
-          fitViewOptions={{ padding: 0.2 }}
+          fitViewOptions={{ padding: 0.05 }}
           position="bottom-left"
           style={{ zIndex: 12 }}
         />
