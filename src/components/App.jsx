@@ -1,6 +1,6 @@
 import IdeaCanvas from './IdeaCanvas';
 import { ReactFlowProvider } from 'reactflow';
-import './index.css';
+import '../index.css';
 
 function App() {
   return (
