@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 /**
  * Custom hook for managing canvas undo/redo functionality
@@ -33,25 +33,53 @@ const useCanvasHistory = ({
   // History state
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-
+  
+  // Flag to prevent infinite loops during undo/redo operations
+  const isUndoRedoOperation = useRef(false);
   // Add current state to history
   const addToHistory = useCallback((currentNodes, currentEdges) => {
+    // Prevent adding to history during undo/redo operations
+    if (isUndoRedoOperation.current) {
+      return;
+    }
+
     const newState = {
       nodes: JSON.parse(JSON.stringify(currentNodes)),
-      edges: JSON.parse(JSON.stringify(currentEdges))
+      edges: JSON.parse(JSON.stringify(currentEdges)),
+      timestamp: Date.now()
     };
 
     setHistory(prev => {
+      // Don't add duplicate states
+      if (prev.length > 0) {
+        const lastState = prev[prev.length - 1];
+        if (JSON.stringify(lastState.nodes) === JSON.stringify(newState.nodes) &&
+            JSON.stringify(lastState.edges) === JSON.stringify(newState.edges)) {
+          return prev;
+        }
+      }
+
       // Remove any states after current index (for when user makes changes after undo)
       const newHistory = prev.slice(0, historyIndex + 1);
-      return [...newHistory, newState];
+      const updatedHistory = [...newHistory, newState];
+      
+      // Limit history size to prevent memory issues
+      if (updatedHistory.length > 50) {
+        return updatedHistory.slice(-50);
+      }
+      return updatedHistory;
     });
-    setHistoryIndex(prev => prev + 1);
+    
+    setHistoryIndex(prev => {
+      const newIndex = prev + 1;
+      return newIndex > 49 ? 49 : newIndex;
+    });
   }, [historyIndex]);
-
   // Handle undo operation
   const handleUndo = useCallback(() => {
     if (historyIndex > 0) {
+      isUndoRedoOperation.current = true;
+      
       const prevState = history[historyIndex - 1];
       
       // Restore nodes with proper data structure and callbacks
@@ -71,6 +99,11 @@ const useCanvasHistory = ({
       
       // Update history index
       setHistoryIndex(prev => prev - 1);
+      
+      // Reset flag after operations complete
+      setTimeout(() => {
+        isUndoRedoOperation.current = false;
+      }, 0);
     }
   }, [
     history, 
@@ -82,10 +115,11 @@ const useCanvasHistory = ({
     hierarchyLevels, 
     showHierarchy
   ]);
-
   // Handle redo operation
   const handleRedo = useCallback(() => {
     if (historyIndex < history.length - 1) {
+      isUndoRedoOperation.current = true;
+      
       const nextState = history[historyIndex + 1];
       
       // Restore nodes with proper data structure and callbacks
@@ -105,6 +139,11 @@ const useCanvasHistory = ({
       
       // Update history index
       setHistoryIndex(prev => prev + 1);
+      
+      // Reset flag after operations complete
+      setTimeout(() => {
+        isUndoRedoOperation.current = false;
+      }, 0);
     }
   }, [
     history, 

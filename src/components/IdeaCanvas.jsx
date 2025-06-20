@@ -170,11 +170,11 @@ const IdeaCanvas = () => {
     4: { name: 'Individual', color: '#96ceb4', bgColor: '#f0fff4' },
     5: { name: 'Task', color: '#feca57', bgColor: '#fff8e1' }
   });
-
   const [showHierarchy, setShowHierarchy] = useState(true);
   const [isHierarchyModalOpen, setIsHierarchyModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const initialNodes = [
     {
@@ -290,13 +290,14 @@ const IdeaCanvas = () => {
     hierarchyLevels: HIERARCHY_LEVELS,
     showHierarchy
   });
-
-  // Add nodes to history when they change
+  // Add nodes to history when they change - Only after initialization
   useEffect(() => {
+    if (!isInitialized || isLoading) return;
+    
     if (nodes.length > 0) {
       addToHistory(nodes, edges);
     }
-  }, [nodes, edges, addToHistory]);
+  }, [nodes, edges, addToHistory, isInitialized, isLoading]);
 
   // Update hierarchy levels
   const onUpdateHierarchy = useCallback((newLevels) => {
@@ -515,10 +516,11 @@ const IdeaCanvas = () => {
   // Virtualization settings
   const nodeVisibilityThreshold = 500; // pixels
   const [viewport, setViewport] = useState({ x: 0, y: 0, zoom: 1 });
-  
-  // Debounced save function
+    // Debounced save function
   const debouncedSave = useMemo(
     () => debounce((data) => {
+      if (!isInitialized || isLoading) return;
+      
       try {
         localStorage.setItem('ideaCanvas_autosave', JSON.stringify(data));
         console.log('Auto-saved canvas');
@@ -526,7 +528,7 @@ const IdeaCanvas = () => {
         console.error('Error auto-saving:', error);
       }
     }, 1000), // 1 second delay
-    []
+    [isInitialized, isLoading]
   );
 
   // Cleanup debounced function
@@ -534,23 +536,8 @@ const IdeaCanvas = () => {
     return () => {
       debouncedSave.cancel();
     };
-  }, [debouncedSave]);
-
-  // Optimize node rendering
-  const visibleNodes = useMemo(() => {
-    return processedNodes.filter(node => {
-      const nodeX = node.position.x * viewport.zoom + viewport.x;
-      const nodeY = node.position.y * viewport.zoom + viewport.y;
-      
-      return (
-        nodeX > -nodeVisibilityThreshold &&
-        nodeX < window.innerWidth + nodeVisibilityThreshold &&
-        nodeY > -nodeVisibilityThreshold &&
-        nodeY < window.innerHeight + nodeVisibilityThreshold
-      );
-    });
-  }, [processedNodes, viewport]);
-  // Handle viewport changes
+  }, [debouncedSave]);  // Use all processed nodes (viewport optimization disabled to prevent errors)
+  const visibleNodes = processedNodes;  // Handle viewport changes
   const onViewportChange = useCallback((newViewport) => {
     setViewport(newViewport);
   }, []);
@@ -569,9 +556,10 @@ const IdeaCanvas = () => {
       debouncedNodeChange.cancel();
     };
   }, [debouncedNodeChange]);
-
-  // Update auto-save to use debounced function
+  // Update auto-save to use debounced function - Only after initialization
   useEffect(() => {
+    if (!isInitialized || isLoading) return;
+    
     const dataToSave = {
       nodes,
       edges,
@@ -580,67 +568,45 @@ const IdeaCanvas = () => {
       nextId
     };
     debouncedSave(dataToSave);
-  }, [nodes, edges, HIERARCHY_LEVELS, showHierarchy, nextId, debouncedSave]);
-
-  // Auto-save functionality
-  useEffect(() => {
-    const autoSave = () => {
-      const dataToSave = { 
-        nodes, 
-        edges, 
-        hierarchyLevels: HIERARCHY_LEVELS, 
-        showHierarchy,
-        nextId 
-      };
-      try {
-        localStorage.setItem('ideaCanvas_autosave', JSON.stringify(dataToSave));
-        console.log('Auto-saved canvas');
-      } catch (error) {
-        console.error('Error auto-saving to localStorage:', error);
-      }
-    };
-
-    const autoSaveInterval = setInterval(autoSave, 60000); // Auto-save every minute
-
-    return () => clearInterval(autoSaveInterval);
-  }, [nodes, edges, HIERARCHY_LEVELS, showHierarchy, nextId]);
-
-  // Load auto-saved data on component mount
-  useEffect(() => {
-    try {
-      const autoSavedData = localStorage.getItem('ideaCanvas_autosave');
-      if (autoSavedData) {
-        const shouldRestore = window.confirm(
-          'Found auto-saved data. Would you like to restore it?'
-        );
-        if (shouldRestore) {
-          const parsedData = JSON.parse(autoSavedData);
-          setNodes(parsedData.nodes.map(node => ({
-            ...node,
-            type: 'custom',
-            data: {
-              ...node.data,
-              hierarchyLevels: parsedData.hierarchyLevels,
-              showHierarchy: parsedData.showHierarchy,
-            }
-          })));
-          setEdges(parsedData.edges);
-          setHierarchyLevels(parsedData.hierarchyLevels);
-          setShowHierarchy(parsedData.showHierarchy);
-          if (parsedData.nextId) {
-            setNextId(parsedData.nextId);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error loading auto-saved data:', error);
-    }
-  }, []);
-
-  // Initialize canvas
+  }, [nodes, edges, HIERARCHY_LEVELS, showHierarchy, nextId, debouncedSave, isInitialized, isLoading]);
+  // Initialize canvas - Single consolidated initialization effect
   useEffect(() => {
     const initializeCanvas = async () => {
+      if (isInitialized) return; // Prevent re-initialization
+      
       try {
+        setIsLoading(true);
+        
+        // Check for auto-saved data first
+        const autoSavedData = localStorage.getItem('ideaCanvas_autosave');
+        if (autoSavedData) {
+          const shouldRestore = window.confirm(
+            'Found auto-saved data. Would you like to restore it?'
+          );
+          if (shouldRestore) {
+            const parsedData = JSON.parse(autoSavedData);
+            setNodes(parsedData.nodes.map(node => ({
+              ...node,
+              type: 'custom',
+              data: {
+                ...node.data,
+                hierarchyLevels: parsedData.hierarchyLevels,
+                showHierarchy: parsedData.showHierarchy,
+              }
+            })));
+            setEdges(parsedData.edges);
+            setHierarchyLevels(parsedData.hierarchyLevels);
+            setShowHierarchy(parsedData.showHierarchy);
+            if (parsedData.nextId) {
+              setNextId(parsedData.nextId);
+            }
+            setIsLoading(false);
+            setIsInitialized(true);
+            return;
+          }
+        }
+        
+        // Otherwise check for regular saved data
         const storedData = localStorage.getItem('ideaCanvas');
         if (storedData) {
           const parsedData = JSON.parse(storedData);
@@ -664,11 +630,12 @@ const IdeaCanvas = () => {
         console.error('Error initializing canvas:', error);
       } finally {
         setIsLoading(false);
+        setIsInitialized(true);
       }
     };
 
     initializeCanvas();
-  }, []);
+  }, []); // Empty dependency array - run only once
 
   // Export/Import functions
   const handleExport = useCallback(() => {
@@ -939,7 +906,6 @@ const IdeaCanvas = () => {
           height: '100vh',
           background: '#fafbfc'
         }}
-        onMove={onViewportChange}
       >
         <Background gap={28} size={2} />
         <Controls
