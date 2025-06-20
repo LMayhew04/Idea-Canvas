@@ -43,10 +43,10 @@ const CustomNode = React.memo(({ data, id, selected }) => {
     { pos: Position.Left, id: 'w', style: { left: -6, top: '50%', transform: 'translateY(-50%)' } },
     { pos: Position.TopLeft, id: 'nw', style: { left: -6, top: -6 } },
   ];
-
   return (
     <div
       className="custom-node"
+      data-testid={`custom-node-${id}`}
       style={{
         minWidth: '160px',
         minHeight: data.showHierarchy ? '90px' : '70px',
