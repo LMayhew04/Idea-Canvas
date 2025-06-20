@@ -322,14 +322,42 @@ const IdeaCanvas = () => {
     setSelectedElements({ nodes: nodes || [], edges: edges || [] });
   }, []);
 
+  // Connection validation (for debugging)
+  const isValidConnection = useCallback((connection) => {
+    console.log('Connection attempt:', connection);
+    
+    // Prevent self-connections
+    if (connection.source === connection.target) {
+      console.log('Rejected: self-connection');
+      return false;
+    }
+    
+    // Check if connection already exists
+    const connectionExists = edges.some(edge => 
+      edge.source === connection.source && 
+      edge.target === connection.target &&
+      edge.sourceHandle === connection.sourceHandle &&
+      edge.targetHandle === connection.targetHandle
+    );
+    
+    if (connectionExists) {
+      console.log('Rejected: connection already exists');
+      return false;
+    }
+    
+    console.log('Accepted: valid connection');
+    return true;
+  }, [edges]);
   // Connection handler
   const onConnect = useCallback((params) => {
-    setEdges((eds) => addEdge({
+    console.log('Creating connection:', params);
+    const newEdge = {
       ...params,
       markerEnd: {
         type: MarkerType.ArrowClosed,
       },
-    }, eds));
+    };
+    setEdges((eds) => addEdge(newEdge, eds));
   }, [setEdges]);
 
   // Add new node
@@ -850,8 +878,7 @@ const IdeaCanvas = () => {
             Press Delete or Backspace to remove selected items
           </div>
         </div>
-      )}
-        <ReactFlow
+      )}      <ReactFlow
         nodes={visibleNodes}
         edges={processedEdges}
         nodeTypes={nodeTypes}
@@ -860,6 +887,7 @@ const IdeaCanvas = () => {
         onConnect={onConnect}
         onSelectionChange={onSelectionChange}
         onPaneClick={handlePaneClick}
+        isValidConnection={isValidConnection}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         deleteKeyCode={['Delete', 'Backspace']}

@@ -63,48 +63,55 @@ const CustomNode = React.memo(({ data, id, selected }) => {
         transition: 'all 0.2s ease',
         cursor: 'pointer'
       }}
-    >
-      {/* Connection Handles */}
+    >      {/* Connection Handles - Both source and target handles */}
       {handlePositions.map(({ pos, id: handleId, style }) => (
-        <React.Fragment key={handleId}>
-          <Handle
+        <React.Fragment key={handleId}>          <Handle
             type="source"
             position={pos}
             id={handleId}
             style={{
-              width: 10,
-              height: 10,
+              width: 12,
+              height: 12,
               background: levelInfo.color,
               border: '2px solid white',
               borderRadius: '50%',
-              opacity: 0.8,
+              opacity: 0.9,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              zIndex: 10,
+              transition: 'all 0.2s ease',
               ...style
             }}
+            className="custom-handle"
+            isConnectable={true}
           />
           <Handle
             type="target"
             position={pos}
             id={handleId + '_target'}
             style={{
-              width: 10,
-              height: 10,
+              width: 12,
+              height: 12,
               background: levelInfo.color,
               border: '2px solid white',
               borderRadius: '50%',
-              opacity: 0.8,
+              opacity: 0.9,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              zIndex: 10,
+              transition: 'all 0.2s ease',
               ...style
             }}
+            className="custom-handle-target"
+            isConnectable={true}
           />
         </React.Fragment>
-      ))}
-
-      {/* Node Label Input */}
+      ))}      {/* Node Label Input */}
       <textarea
         className="node-input"
         value={data.label || ''}
         onChange={onLabelChange}
         onClick={handleInputClick}
         onFocus={handleInputClick}
+        onMouseDown={handleInputClick}
         spellCheck={false}
         placeholder="Enter idea..."
         style={{
@@ -124,7 +131,8 @@ const CustomNode = React.memo(({ data, id, selected }) => {
           overflow: 'hidden',
           fontFamily: 'inherit',
           cursor: 'text',
-          pointerEvents: 'all'
+          pointerEvents: 'all',
+          userSelect: 'text'
         }}
         rows={1}
         onInput={(e) => {
