@@ -63,6 +63,20 @@ HTMLElement.prototype.getBoundingClientRect = vi.fn().mockReturnValue({
   right: 100,
 });
 
+// Mock navigation to prevent jsdom navigation errors
+Object.defineProperty(HTMLAnchorElement.prototype, 'click', {
+  value: vi.fn(),
+  writable: true
+});
+
+// Mock URL.createObjectURL to prevent navigation errors during file downloads
+if (!global.URL.createObjectURL) {
+  global.URL.createObjectURL = vi.fn(() => 'mocked-url');
+}
+if (!global.URL.revokeObjectURL) {
+  global.URL.revokeObjectURL = vi.fn();
+}
+
 beforeEach(() => {
   // Ensure there's a root element in the DOM for React to mount to
   if (!document.getElementById('root')) {

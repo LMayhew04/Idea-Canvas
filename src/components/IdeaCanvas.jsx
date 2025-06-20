@@ -550,9 +550,8 @@ const IdeaCanvas = () => {
       );
     });
   }, [processedNodes, viewport]);
-
   // Handle viewport changes
-  const onViewportChange = useCallback((event, newViewport) => {
+  const onViewportChange = useCallback((newViewport) => {
     setViewport(newViewport);
   }, []);
 
@@ -935,13 +934,12 @@ const IdeaCanvas = () => {
         multiSelectionKeyCode={['Control', 'Meta']}
         nodesDraggable={true}
         nodesConnectable={true}
-        elementsSelectable={true}
-        style={{
+        elementsSelectable={true}        style={{
           width: '100vw',
           height: '100vh',
           background: '#fafbfc'
         }}
-        onViewportChange={onViewportChange}
+        onMove={onViewportChange}
       >
         <Background gap={28} size={2} />
         <Controls

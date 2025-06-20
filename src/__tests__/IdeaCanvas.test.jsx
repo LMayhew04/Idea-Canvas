@@ -405,16 +405,18 @@ describe('IdeaCanvas Component', () => {
     test('handles hierarchy settings modal', async () => {
       // Arrange
       render(<App />);
-      
-      try {
-        const hierarchyButton = screen.getByText('Hierarchy Settings');
+        try {
+        // Find the button specifically (not the modal title)
+        const hierarchyButton = screen.getByRole('button', { name: 'Hierarchy Settings' });
 
         // Act: Test that the modal can be opened
         await act(async () => {
           fireEvent.click(hierarchyButton);
         });
-          // Assert: Check for modal elements
-        expect(screen.getByText('Hierarchy Settings')).toBeInTheDocument();
+        
+        // Assert: Check for modal elements - look for the modal heading specifically
+        const modalHeading = screen.getByRole('heading', { name: 'Hierarchy Settings' });
+        expect(modalHeading).toBeInTheDocument();
       } catch (error) {
         // If DOM manipulation fails, skip this test in the test environment
         console.warn('DOM manipulation test skipped due to environment limitations:', error.message);
