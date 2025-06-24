@@ -9,13 +9,7 @@ const CustomNode = React.memo(({ data, id, selected }) => {
   // Sync local label state with prop changes  
   useEffect(() => {
     setLabel(data.label || 'New Idea');
-  }, [data.label]);  // Handle level change for hierarchy
-  const onLevelChange = useCallback((evt) => {
-    evt.stopPropagation(); // Prevent event bubbling
-    if (data.onLevelChange) {
-      data.onLevelChange(id, evt.target.value);
-    }
-  }, [id, data.onLevelChange]);
+  }, [data.label]);
 
   // Fix #1: unified callback lookup
   const handleTextDoubleClick = useCallback((event) => {
@@ -48,7 +42,7 @@ const CustomNode = React.memo(({ data, id, selected }) => {
       data-testid={`custom-node-${id}`}
       style={{
         minWidth: '160px',
-        minHeight: data.showHierarchy ? '90px' : '70px',
+        minHeight: '70px',
         maxWidth: '250px',
         background: levelInfo.bgColor,
         border: `3px solid ${levelInfo.color}`,
@@ -112,7 +106,7 @@ const CustomNode = React.memo(({ data, id, selected }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: data.showHierarchy ? '8px' : '0px',
+          marginBottom: '0px',
           padding: '4px',
           borderRadius: '4px'
         }}
@@ -135,45 +129,7 @@ const CustomNode = React.memo(({ data, id, selected }) => {
         >
           {label}
         </div>
-      </div>      {/* Hierarchy Level Selector - Conditionally Rendered */}
-      {data.showHierarchy && (
-        <div 
-          className="nodrag" // Prevent dragging when interacting with select
-          style={{
-            position: 'relative',   // <<< added
-            zIndex: 20,             // <<< added
-            fontSize: 12,
-            color: data.hierarchyLevels?.[data.level || 4]?.color,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginTop: '4px'
-          }}
-          onClick={(e) => e.stopPropagation()} // Prevent node selection when clicking dropdown area
-          onMouseDown={(e) => e.stopPropagation()} // Prevent drag initiation
-        >
-          Level:&nbsp;
-          <select
-            value={data.level || 4}
-            onChange={onLevelChange}
-            onClick={(e) => e.stopPropagation()} // Prevent event bubbling
-            onMouseDown={(e) => e.stopPropagation()} // Prevent drag initiation
-            style={{
-              background: levelInfo.bgColor,
-              color: levelInfo.color,
-              border: `1.5px solid ${levelInfo.color}`,
-              borderRadius: 4,
-              fontWeight: 600,
-              padding: '3px 8px',
-              fontSize: 11,
-              cursor: 'pointer'
-            }}>
-            {data.hierarchyLevels && Object.entries(data.hierarchyLevels).map(([num, lvl]) => (
-              <option key={num} value={num}>{lvl.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      </div>
     </div>
   );
 });

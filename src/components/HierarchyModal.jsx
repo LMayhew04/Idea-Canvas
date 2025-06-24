@@ -2,11 +2,21 @@ import React, { useState } from 'react';
 
 const HierarchyModal = ({ isOpen, onClose, hierarchyLevels, onUpdateHierarchy, showHierarchy, onToggleHierarchy }) => {
   const [tempLevels, setTempLevels] = useState(hierarchyLevels);
-
   const handleLevelNameChange = (levelNum, newName) => {
     setTempLevels(prev => ({
       ...prev,
       [levelNum]: { ...prev[levelNum], name: newName }
+    }));
+  };
+
+  const handleLevelColorChange = (levelNum, newColor) => {
+    setTempLevels(prev => ({
+      ...prev,
+      [levelNum]: { 
+        ...prev[levelNum], 
+        color: newColor,
+        bgColor: newColor + '20' // Add transparency for background
+      }
     }));
   };
 
@@ -63,31 +73,21 @@ const HierarchyModal = ({ isOpen, onClose, hierarchyLevels, onUpdateHierarchy, s
             checked={showHierarchy}
             onChange={(e) => onToggleHierarchy(e.target.checked)}
             style={{ transform: 'scale(1.2)' }}
-          />
-          <label htmlFor="showHierarchy" style={{ fontSize: '14px', fontWeight: 500 }}>
-            Show hierarchy levels on nodes
+          />          <label htmlFor="showHierarchy" style={{ fontSize: '14px', fontWeight: 500 }}>
+            Hierarchy Levels
           </label>
-        </div>
-
-        {/* Level Name Editors */}
+        </div>        {/* Level Name and Color Editors */}
         <div style={{ marginBottom: '20px' }}>
           <h3 style={{ fontSize: '16px', marginBottom: '12px', fontWeight: 500 }}>
-            Level Names:
+            Level Names & Colors:
           </h3>
           {Object.entries(tempLevels).map(([levelNum, levelData]) => (
             <div key={levelNum} style={{
               display: 'flex',
               alignItems: 'center',
-              marginBottom: '8px',
+              marginBottom: '12px',
               gap: '12px'
             }}>
-              <div style={{
-                width: '20px',
-                height: '20px',
-                backgroundColor: levelData.color,
-                borderRadius: '4px',
-                flexShrink: 0
-              }}></div>
               <span style={{ minWidth: '80px', fontSize: '14px' }}>Level {levelNum}:</span>
               <input
                 type="text"
@@ -100,6 +100,19 @@ const HierarchyModal = ({ isOpen, onClose, hierarchyLevels, onUpdateHierarchy, s
                   borderRadius: '4px',
                   fontSize: '14px'
                 }}
+              />
+              <input
+                type="color"
+                value={levelData.color}
+                onChange={(e) => handleLevelColorChange(levelNum, e.target.value)}
+                style={{
+                  width: '40px',
+                  height: '32px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+                title={`Color for ${levelData.name}`}
               />
             </div>
           ))}
