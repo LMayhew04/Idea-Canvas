@@ -68,8 +68,7 @@ const TextEditDialog = ({ isOpen, nodeId, currentText, onSave, onCancel }) => {
           outline: 'none'
         }}
         onClick={(e) => e.stopPropagation()} // Prevent backdrop click when clicking inside
-      >
-        <h3 style={{ 
+      >        <h3 style={{ 
           margin: '0 0 16px 0', 
           fontSize: '18px', 
           fontWeight: 600,
@@ -77,6 +76,14 @@ const TextEditDialog = ({ isOpen, nodeId, currentText, onSave, onCancel }) => {
         }}>
           Edit Node Text
         </h3>
+        
+        <div style={{
+          fontSize: '14px',
+          color: '#666',
+          marginBottom: '12px'
+        }}>
+          Edit the text content for the selected node. Changes will be applied when you click Save.
+        </div>
         
         <textarea
           ref={textareaRef}

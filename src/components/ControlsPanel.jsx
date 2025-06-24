@@ -5,17 +5,15 @@ const ControlsPanel = ({
   onOpenHierarchySettings,
   onDeleteSelected,
   selectedElements,
-  onSave,
-  onLoad,
-  onClearSelection,
   onExport,
   onImportFile,
   onTriggerImport,
   onEditText,
-  importInputRef
+  importInputRef,
+  hasNodes = true
 }) => {
   return (
-    <div className="controls-panel">      <button
+    <div className="controls-panel"><button
         onClick={onAddNode}
         style={{
           backgroundColor: '#2271f5',
@@ -78,72 +76,22 @@ const ControlsPanel = ({
           fontWeight: 600
         }}
       >
-        Delete Selected
-      </button>
-      
-      <button
-        onClick={onSave}
-        className="save-button"
-        style={{
-          backgroundColor: '#3ac569',
-          color: 'white',
-          border: 'none',
-          padding: '8px 12px',
-          borderRadius: 5,
-          cursor: 'pointer',
-          fontSize: 14,
-          fontWeight: 600
-        }}
-      >
-        Save
-      </button>
-      
-      <button
-        onClick={onLoad}
-        style={{
-          backgroundColor: '#2271f5',
-          color: 'white',
-          border: 'none',
-          padding: '8px 12px',
-          borderRadius: 5,
-          cursor: 'pointer',
-          fontSize: 14,
-          fontWeight: 600
-        }}
-      >
-        Load
-      </button>
-      
-      <button
-        onClick={onClearSelection}
-        style={{
-          backgroundColor: '#6c757d',
-          color: 'white',
-          border: 'none',
-          padding: '8px 12px',
-          borderRadius: 5,
-          cursor: 'pointer',
-          fontSize: 14,
-          fontWeight: 600
-        }}
-      >
-        Clear Selection
-      </button>
-      
-      <button
+        Delete Selected      </button>
+        <button
         onClick={onExport}
+        disabled={!hasNodes}
         style={{
-          backgroundColor: '#28a745',
+          backgroundColor: hasNodes ? '#28a745' : '#ccc',
           color: 'white',
           border: 'none',
           padding: '8px 12px',
           borderRadius: 5,
-          cursor: 'pointer',
+          cursor: hasNodes ? 'pointer' : 'not-allowed',
           fontSize: 14,
           fontWeight: 600
-        }}
+        }}        title={hasNodes ? 'Save your canvas to a JSON file on your computer' : 'No nodes to export'}
       >
-        Export Canvas
+        Save Canvas
       </button>      <button
         onClick={onTriggerImport}
         style={{
@@ -156,8 +104,9 @@ const ControlsPanel = ({
           fontSize: 14,
           fontWeight: 600
         }}
+        title="Load a canvas from a JSON file on your computer"
       >
-        Import Canvas
+        Load Canvas
       </button>
       
       <input

@@ -17,6 +17,7 @@ import HierarchyModal from './HierarchyModal';
 import HierarchyLegend from './HierarchyLegend';
 import ControlsPanel from './ControlsPanel';
 import SelectionInfo from './SelectionInfo';
+import NotificationSystem from './NotificationSystem';
 
 // Main IdeaCanvas Component - All hooks consolidated
 const IdeaCanvas = () => {
@@ -44,15 +45,20 @@ const IdeaCanvas = () => {
   });
 
   // ====== SELECTION STATE ======
-  const [selectedElements, setSelectedElements] = useState({ nodes: [], edges: [] });
-
-  // ====== PERSISTENCE STATE ======
-  const [isSaving, setIsSaving] = useState(false);
-  const importInputRef = useRef(null);
+  const [selectedElements, setSelectedElements] = useState({ nodes: [], edges: [] });  // ====== PERSISTENCE STATE ======
+  const [storageError, setStorageError] = useState(false);  const importInputRef = useRef(null);
 
   // ====== HISTORY STATE ======
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // ====== UTILITY HELPERS ======
+  // Safe notification helper to prevent window undefined errors in tests
+  const showNotification = useCallback((message, type = 'info', duration) => {
+    if (typeof window !== 'undefined' && window.showNotification) {
+      window.showNotification(message, type, duration);
+    }
+  }, []);
 
   // Initial data
   const initialNodes = [
@@ -118,6 +124,36 @@ const IdeaCanvas = () => {
   const nodeTypes = { custom: CustomNode };
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // ====== STORAGE HELPERS ======
+  const isStorageAvailable = useCallback(() => {
+    try {
+      const testKey = '_ideaCanvas_test';
+      localStorage.setItem(testKey, 'test');
+      localStorage.removeItem(testKey);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }, []);
+  const safeStorageOperation = useCallback((operation, fallbackMessage) => {
+    try {
+      if (!isStorageAvailable()) {
+        setStorageError(true);
+        showNotification(
+          'Storage not available. Changes will be lost when you close the browser.', 
+          'warning', 
+          5000
+        );
+        return false;
+      }
+      return operation();
+    } catch (error) {
+      console.error('Storage operation failed:', error);
+      showNotification(fallbackMessage, 'error');
+      return false;
+    }
+  }, [isStorageAvailable, showNotification]);
 
   // ====== MODAL HANDLERS ======
   const openHierarchyModal = useCallback(() => {
@@ -211,7 +247,6 @@ const IdeaCanvas = () => {
       openTextEditDialog(selectedNode.id, selectedNode.data.label);
     }
   }, [selectedElements, openTextEditDialog]);
-
   const handleLegendLevelClick = useCallback((levelNum) => {
     const selectedNodes = selectedElements.nodes;
     if (selectedNodes.length === 0) return;
@@ -220,7 +255,14 @@ const IdeaCanvas = () => {
     selectedNodeIds.forEach(nodeId => {
       onNodeLevelChange(nodeId, levelNum);
     });
-  }, [selectedElements, onNodeLevelChange]);
+      // Show feedback
+    const levelName = HIERARCHY_LEVELS[levelNum]?.name || `Level ${levelNum}`;
+    if (selectedNodes.length === 1) {
+      showNotification(`Node updated to ${levelName} level`, 'success', 2000);
+    } else {
+      showNotification(`${selectedNodes.length} nodes updated to ${levelName} level`, 'success', 2000);
+    }
+  }, [selectedElements, onNodeLevelChange, HIERARCHY_LEVELS]);
 
   const onSelectionChange = useCallback(({ nodes, edges }) => {
     setSelectedElements({ nodes: nodes || [], edges: edges || [] });
@@ -269,10 +311,19 @@ const IdeaCanvas = () => {
     setNodes(nds => [...nds, newNode]);
     setNextId(prev => prev + 1);
   }, [nextId, HIERARCHY_LEVELS, showHierarchy, setNodes]);
-
   const handleDeleteSelected = useCallback(() => {
     const selectedNodeIds = selectedElements.nodes.map(n => n.id);
     const selectedEdgeIds = selectedElements.edges.map(e => e.id);
+    
+    const totalSelected = selectedNodeIds.length + selectedEdgeIds.length;
+    if (totalSelected === 0) return;
+    
+    // Show confirmation for multiple deletions
+    const shouldDelete = totalSelected === 1 || window.confirm(
+      `Are you sure you want to delete ${totalSelected} selected item${totalSelected !== 1 ? 's' : ''}? This action cannot be undone.`
+    );
+    
+    if (!shouldDelete) return;
     
     if (selectedNodeIds.length > 0) {
       setNodes(nds => nds.filter(node => !selectedNodeIds.includes(node.id)));
@@ -285,17 +336,18 @@ const IdeaCanvas = () => {
     if (selectedEdgeIds.length > 0) {
       setEdges(eds => eds.filter(edge => !selectedEdgeIds.includes(edge.id)));
     }
+      setSelectedElements({ nodes: [], edges: [] });
     
-    setSelectedElements({ nodes: [], edges: [] });
-  }, [selectedElements, setNodes, setEdges]);
-
-  const clearSelection = useCallback(() => {
-    setSelectedElements({ nodes: [], edges: [] });
-  }, []);
+    // Show feedback
+    if (totalSelected === 1) {
+      showNotification('Item deleted', 'info', 2000);
+    } else {
+      showNotification(`${totalSelected} items deleted`, 'info', 2000);
+    }  }, [selectedElements, setNodes, setEdges]);
 
   const handlePaneClick = useCallback(() => {
-    clearSelection();
-  }, [clearSelection]);
+    setSelectedElements({ nodes: [], edges: [] });
+  }, []);
   // ====== PROCESSED NODES/EDGES ======
   const processedNodes = useMemo(() => {
     return nodes.map(node => ({
@@ -328,97 +380,114 @@ const IdeaCanvas = () => {
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
-
-  // ====== PERSISTENCE ======
-  const saveCanvas = useCallback(() => {
-    const canvasData = {
-      nodes,
-      edges,
-      hierarchyLevels: HIERARCHY_LEVELS,
-      showHierarchy,
-      nextId
-    };
-    localStorage.setItem('ideaCanvas_save', JSON.stringify(canvasData));
-    
-    // Auto-save as well
-    localStorage.setItem('ideaCanvas_autosave', JSON.stringify(canvasData));
-    
-    alert('Canvas saved successfully!');
-  }, [nodes, edges, HIERARCHY_LEVELS, showHierarchy, nextId]);
-
-  const loadCanvas = useCallback(() => {
-    const savedData = localStorage.getItem('ideaCanvas_save');
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      setNodes(parsedData.nodes.map(node => ({
-        ...node,
-        type: 'custom',
-        data: {
-          ...node.data,
-          hierarchyLevels: parsedData.hierarchyLevels,
-          showHierarchy: parsedData.showHierarchy,
-        }
-      })));
-      setEdges(parsedData.edges);
-      setHierarchyLevels(parsedData.hierarchyLevels);
-      setShowHierarchy(parsedData.showHierarchy);
-      if (parsedData.nextId) {
-        setNextId(parsedData.nextId);
-      }
-      alert('Canvas loaded successfully!');
-    } else {
-      alert('No saved canvas found!');
-    }
-  }, [setNodes, setEdges]);
-
+  }, [handleKeyDown]);  // ====== PERSISTENCE ======
   const handleExport = useCallback(() => {
-    const canvasData = {
-      nodes,
-      edges,
-      hierarchyLevels: HIERARCHY_LEVELS,
-      showHierarchy,
-      nextId
-    };
-    const blob = new Blob([JSON.stringify(canvasData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'idea-canvas.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [nodes, edges, HIERARCHY_LEVELS, showHierarchy, nextId]);
-
-  const handleImport = useCallback((event) => {
+    try {      if (nodes.length === 0) {
+        window.showNotification?.('No nodes to save. Add some content first!', 'warning');
+        return;
+      }
+      
+      window.showNotification?.('Saving canvas...', 'loading', 1000);
+        const canvasData = {
+        nodes,
+        edges,
+        hierarchyLevels: HIERARCHY_LEVELS,
+        showHierarchy,
+        nextId,
+        savedAt: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(canvasData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `idea-canvas-${new Date().toISOString().split('T')[0]}.json`;      a.click();
+      URL.revokeObjectURL(url);
+        setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          window.showNotification?.('Canvas saved! File downloaded to your computer. This is your main way to save your work.', 'success');
+        }
+      }, 500);
+    } catch (error) {
+      console.error('Export error:', error);
+      if (typeof window !== 'undefined') {
+        window.showNotification?.('Failed to save canvas. Please try again.', 'error');
+      }
+    }
+  }, [nodes, edges, HIERARCHY_LEVELS, showHierarchy, nextId]);  const handleImport = useCallback((event) => {
     const file = event.target.files[0];
     if (file) {
+      // Warn about overwriting current work
+      if (nodes.length > 0 || edges.length > 0) {        const shouldImport = window.confirm(
+          'Loading will replace your current canvas. Any unsaved changes will be lost. Continue?'
+        );
+        if (!shouldImport) {
+          // Reset the input
+          if (event.target) {
+            event.target.value = '';
+          }
+          return;
+        }
+      }
+
+      window.showNotification?.('Loading canvas...', 'loading', 2000);
+      
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const parsedData = JSON.parse(e.target.result);
+          
+          // Enhanced validation
+          if (!parsedData || typeof parsedData !== 'object') {
+            throw new Error('Invalid file format: not a valid JSON object');
+          }
+          
+          if (!parsedData.nodes || !Array.isArray(parsedData.nodes)) {
+            throw new Error('Invalid file format: missing or invalid nodes data');
+          }
+
+          // Validate node structure
+          const invalidNodes = parsedData.nodes.filter(node => 
+            !node.id || !node.data || typeof node.data.label !== 'string'
+          );
+          
+          if (invalidNodes.length > 0) {
+            throw new Error(`Invalid node structure found in ${invalidNodes.length} node(s)`);
+          }
+          
           setNodes(parsedData.nodes.map(node => ({
             ...node,
             type: 'custom',
             data: {
               ...node.data,
-              hierarchyLevels: parsedData.hierarchyLevels,
-              showHierarchy: parsedData.showHierarchy,
+              hierarchyLevels: parsedData.hierarchyLevels || HIERARCHY_LEVELS,
+              showHierarchy: parsedData.showHierarchy || false,
             }
           })));
-          setEdges(parsedData.edges);
-          setHierarchyLevels(parsedData.hierarchyLevels);
-          setShowHierarchy(parsedData.showHierarchy);
+          setEdges(parsedData.edges || []);
+          setHierarchyLevels(parsedData.hierarchyLevels || HIERARCHY_LEVELS);
+          setShowHierarchy(parsedData.showHierarchy || false);
           if (parsedData.nextId) {
             setNextId(parsedData.nextId);
           }
-          alert('Canvas imported successfully!');
+            setTimeout(() => {
+            window.showNotification?.(`Canvas loaded successfully! Loaded ${parsedData.nodes.length} nodes and ${(parsedData.edges || []).length} connections. Use "Save Canvas" to preserve your work.`, 'success');
+          }, 1000);
         } catch (error) {
-          alert('Error importing canvas: Invalid file format');
+          console.error('Import error:', error);
+          window.showNotification?.(`Failed to load canvas: ${error.message}`, 'error');
         }
+      };
+      reader.onerror = () => {
+        window.showNotification?.('Failed to read the file. Please try again.', 'error');
       };
       reader.readAsText(file);
     }
-  }, [setNodes, setEdges]);
+    
+    // Reset the input so the same file can be imported again
+    if (event.target) {
+      event.target.value = '';
+    }
+  }, [setNodes, setEdges, HIERARCHY_LEVELS, nodes.length, edges.length]);
 
   const triggerImport = useCallback(() => {
     importInputRef.current?.click();
@@ -482,7 +551,6 @@ const IdeaCanvas = () => {
       debouncedAddToHistory.cancel();
     };
   }, [debouncedAddToHistory]);
-
   // ====== INITIALIZATION ======
   useEffect(() => {
     const initializeCanvas = async () => {
@@ -491,36 +559,73 @@ const IdeaCanvas = () => {
       try {
         setIsLoading(true);
         
+        // Check storage availability first
+        if (!isStorageAvailable()) {
+          setStorageError(true);
+          window.showNotification?.(
+            'Storage is not available. Your work will not be saved automatically.',
+            'warning',
+            5000
+          );
+        }
+        
         // Check for auto-saved data
         const autoSavedData = localStorage.getItem('ideaCanvas_autosave');
-        if (autoSavedData) {
-          const shouldRestore = window.confirm(
-            'Found auto-saved data. Would you like to restore it?'
-          );
-          if (shouldRestore) {
+        if (autoSavedData && !storageError) {
+          try {
             const parsedData = JSON.parse(autoSavedData);
-            setNodes(parsedData.nodes.map(node => ({
-              ...node,
-              type: 'custom',
-              data: {
-                ...node.data,
-                hierarchyLevels: parsedData.hierarchyLevels,
-                showHierarchy: parsedData.showHierarchy,
+            const autoSaveDate = parsedData.autoSavedAt 
+              ? new Date(parsedData.autoSavedAt).toLocaleString()
+              : 'recently';
+            
+            const shouldRestore = window.confirm(
+              `Found auto-saved data from ${autoSaveDate}. Would you like to restore it?`
+            );
+            
+            if (shouldRestore) {
+              // Validate auto-saved data
+              if (parsedData.nodes && Array.isArray(parsedData.nodes)) {
+                setNodes(parsedData.nodes.map(node => ({
+                  ...node,
+                  type: 'custom',
+                  data: {
+                    ...node.data,
+                    hierarchyLevels: parsedData.hierarchyLevels || HIERARCHY_LEVELS,
+                    showHierarchy: parsedData.showHierarchy || false,
+                  }
+                })));
+                setEdges(parsedData.edges || []);
+                setHierarchyLevels(parsedData.hierarchyLevels || HIERARCHY_LEVELS);
+                setShowHierarchy(parsedData.showHierarchy || false);
+                if (parsedData.nextId) {
+                  setNextId(parsedData.nextId);
+                }
+                
+                window.showNotification?.(
+                  `Auto-saved data restored successfully! (${parsedData.nodes.length} nodes)`,
+                  'success'
+                );
+                
+                setIsLoading(false);
+                setIsInitialized(true);
+                return;
+              } else {
+                window.showNotification?.(
+                  'Auto-saved data appears corrupted. Loading default canvas.',
+                  'warning'
+                );
               }
-            })));
-            setEdges(parsedData.edges);
-            setHierarchyLevels(parsedData.hierarchyLevels);
-            setShowHierarchy(parsedData.showHierarchy);
-            if (parsedData.nextId) {
-              setNextId(parsedData.nextId);
             }
-            setIsLoading(false);
-            setIsInitialized(true);
-            return;
+          } catch (error) {
+            console.error('Error parsing auto-saved data:', error);
+            window.showNotification?.(
+              'Auto-saved data is corrupted. Loading default canvas.',
+              'warning'
+            );
           }
         }
 
-        // No auto-saved data, use initial data
+        // No auto-saved data or user declined, use initial data
         setNodes(initialNodes.map(node => ({
           ...node,
           data: {
@@ -535,52 +640,121 @@ const IdeaCanvas = () => {
         setIsInitialized(true);
       } catch (error) {
         console.error('Error initializing canvas:', error);
+        window.showNotification?.(
+          'Error initializing canvas. Some features may not work properly.',
+          'error'
+        );
         setIsLoading(false);
         setIsInitialized(true);
       }
     };
 
     initializeCanvas();
-  }, [isInitialized, HIERARCHY_LEVELS, showHierarchy, setNodes, setEdges]);
-
-  // Auto-save effect
+  }, [isInitialized, HIERARCHY_LEVELS, showHierarchy, setNodes, setEdges, isStorageAvailable, storageError]);
+  // Auto-save effect with error handling
   useEffect(() => {
     if (!isInitialized || isLoading) return;
     
     const autoSaveInterval = setInterval(() => {
-      const canvasData = {
-        nodes,
-        edges,
-        hierarchyLevels: HIERARCHY_LEVELS,
-        showHierarchy,
-        nextId
-      };
-      localStorage.setItem('ideaCanvas_autosave', JSON.stringify(canvasData));
+      if (storageError) return; // Skip auto-save if storage is not available
+      
+      safeStorageOperation(() => {
+        const canvasData = {
+          nodes,
+          edges,
+          hierarchyLevels: HIERARCHY_LEVELS,
+          showHierarchy,
+          nextId,
+          autoSavedAt: new Date().toISOString()
+        };
+        localStorage.setItem('ideaCanvas_autosave', JSON.stringify(canvasData));
+        return true;
+      }, 'Auto-save failed');
     }, 30000); // Auto-save every 30 seconds
 
     return () => clearInterval(autoSaveInterval);
-  }, [nodes, edges, HIERARCHY_LEVELS, showHierarchy, nextId, isInitialized, isLoading]);
-
+  }, [nodes, edges, HIERARCHY_LEVELS, showHierarchy, nextId, isInitialized, isLoading, storageError, safeStorageOperation]);
   // ====== RENDER ======
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', background: '#fafbfc' }}>      {/* Controls Panel */}
-      <ControlsPanel
+    <div style={{ width: '100vw', height: '100vh', position: 'relative', background: '#fafbfc' }}>
+      {/* Controls Panel */}      <ControlsPanel
         onAddNode={handleAddNode}
         onOpenHierarchySettings={openHierarchyModal}
         onDeleteSelected={handleDeleteSelected}
         selectedElements={selectedElements}
-        onSave={saveCanvas}
-        onLoad={loadCanvas}
-        onClearSelection={clearSelection}
         onExport={handleExport}
         onImportFile={handleImport}
         onTriggerImport={triggerImport}
         onEditText={handleEditTextButton}
         importInputRef={importInputRef}
+        hasNodes={processedNodes.length > 0}
       />
+
+      {/* Storage Warning Banner */}
+      {storageError && (
+        <div style={{
+          position: 'absolute',
+          top: 10,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 15,
+          backgroundColor: '#fff3cd',
+          color: '#856404',
+          padding: '8px 16px',
+          borderRadius: '6px',
+          border: '1px solid #ffeaa7',
+          fontSize: '14px',
+          fontWeight: 500,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
+          ⚠ Storage unavailable - changes will be lost when you close the browser
+        </div>
+      )}
 
       {/* Selection Info */}
       <SelectionInfo selectedElements={selectedElements} />
+
+      {/* Empty State Message */}
+      {processedNodes.length === 0 && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          textAlign: 'center',
+          zIndex: 5,
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          padding: '40px',
+          borderRadius: '12px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+          border: '1px solid #e1e5e9'
+        }}>
+          <h2 style={{ 
+            margin: '0 0 16px 0', 
+            fontSize: '24px', 
+            color: '#2c3e50',
+            fontWeight: 600 
+          }}>
+            Welcome to Idea Canvas!
+          </h2>
+          <p style={{ 
+            margin: '0 0 24px 0', 
+            fontSize: '16px', 
+            color: '#7f8c8d',
+            lineHeight: '1.5',
+            maxWidth: '400px'
+          }}>
+            Start building your ideas by adding your first node. Click the "Add Node" button above, 
+            or load an existing canvas to continue your work.
+          </p>
+          <div style={{
+            fontSize: '14px',
+            color: '#95a5a6'
+          }}>
+            💡 Tip: Use the hierarchy system to organize your ideas by importance level
+          </div>
+        </div>
+      )}
 
       {/* Hierarchy Legend - Show when hierarchy is enabled */}
       {showHierarchy && (
@@ -634,9 +808,7 @@ const IdeaCanvas = () => {
         onUpdateHierarchy={onUpdateHierarchy}
         showHierarchy={showHierarchy}
         onToggleHierarchy={onToggleHierarchy}
-      />
-
-      {/* Text Edit Dialog */}
+      />      {/* Text Edit Dialog */}
       <TextEditDialog
         isOpen={textEditDialog.isOpen}
         nodeId={textEditDialog.nodeId}
@@ -644,6 +816,9 @@ const IdeaCanvas = () => {
         onSave={handleTextEdit}
         onCancel={closeTextEditDialog}
       />
+
+      {/* Notification System */}
+      <NotificationSystem />
     </div>
   );
 };

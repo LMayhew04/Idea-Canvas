@@ -24,15 +24,21 @@ const HierarchyLegend = ({ hierarchyLevels, onLevelClick, selectedNodes }) => {
       }}>
         Hierarchy Levels
       </h4>
-      
-      {hasSelectedNodes && (
+        {hasSelectedNodes && (
         <p style={{
           margin: '0 0 8px 0',
           fontSize: '12px',
           color: '#666',
-          fontStyle: 'italic'
+          fontStyle: 'italic',
+          backgroundColor: '#f8f9fa',
+          padding: '6px 8px',
+          borderRadius: '4px',
+          border: '1px solid #e9ecef'
         }}>
-          Click a level to assign to selected nodes
+          {selectedNodes.length === 1 
+            ? 'Click a level to assign to the selected node'
+            : `Click a level to assign to all ${selectedNodes.length} selected nodes`
+          }
         </p>
       )}
       
