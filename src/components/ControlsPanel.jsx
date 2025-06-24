@@ -11,11 +11,11 @@ const ControlsPanel = ({
   onExport,
   onImportFile,
   onTriggerImport,
+  onEditText,
   importInputRef
 }) => {
   return (
-    <div className="controls-panel">
-      <button
+    <div className="controls-panel">      <button
         onClick={onAddNode}
         style={{
           backgroundColor: '#2271f5',
@@ -29,6 +29,23 @@ const ControlsPanel = ({
         }}
       >
         Add Node
+      </button>
+      
+      <button
+        onClick={onEditText}
+        disabled={selectedElements.nodes.length !== 1}
+        style={{
+          backgroundColor: selectedElements.nodes.length === 1 ? '#28a745' : '#ccc',
+          color: 'white',
+          border: 'none',
+          padding: '8px 12px',
+          borderRadius: 5,
+          cursor: selectedElements.nodes.length === 1 ? 'pointer' : 'not-allowed',
+          fontSize: 14,
+          fontWeight: 600
+        }}
+      >
+        Edit Text
       </button>
       
       <button

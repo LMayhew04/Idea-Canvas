@@ -10,15 +10,15 @@ const CustomNode = React.memo(({ data, id, selected }) => {
   useEffect(() => {
     setLabel(data.label || 'New Idea');
   }, [data.label]);
-
-  // Fix #1: unified callback lookup
-  const handleTextDoubleClick = useCallback((event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    // prefer onEditText, fallback to onOpenTextEditor
-    const editFn = data.onEditText ?? data.onOpenTextEditor;
-    editFn?.(id, label);
-  }, [id, label, data.onEditText, data.onOpenTextEditor]);
+  // Calculate dynamic height based on text content
+  const calculateHeight = useCallback(() => {
+    const baseHeight = 70;
+    const textLength = label.length;
+    const lineHeight = 20;
+    const charsPerLine = 20; // Approximate characters per line
+    const estimatedLines = Math.ceil(textLength / charsPerLine);
+    return Math.max(baseHeight, estimatedLines * lineHeight + 40); // 40px for padding
+  }, [label]);
 
   const currentLevel = data.level || 4;
   const levelInfo = data.hierarchyLevels?.[currentLevel] || {
@@ -42,7 +42,7 @@ const CustomNode = React.memo(({ data, id, selected }) => {
       data-testid={`custom-node-${id}`}
       style={{
         minWidth: '160px',
-        minHeight: '70px',
+        height: `${calculateHeight()}px`,
         maxWidth: '250px',
         background: levelInfo.bgColor,
         border: `3px solid ${levelInfo.color}`,
@@ -54,7 +54,10 @@ const CustomNode = React.memo(({ data, id, selected }) => {
         position: 'relative',
         transition: 'all 0.2s ease',
         cursor: 'pointer',
-        pointerEvents: 'auto'
+        pointerEvents: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center'
       }}
     >{/* Connection Handles - Both source and target handles */}
       {handlePositions.map(({ pos, id: handleId, style }) => (
@@ -97,20 +100,20 @@ const CustomNode = React.memo(({ data, id, selected }) => {
             isConnectable={true}
           />
         </React.Fragment>
-      ))}      {/* Node Label - Static text, double-click handled by React Flow */}
+      ))}      {/* Node Label - Read-only text display */}
       <div 
         style={{ 
           width: '100%',
           position: 'relative',
-          minHeight: '24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: '0px',
+          flex: 1,
           padding: '4px',
           borderRadius: '4px'
         }}
-      >        <div
+      >
+        <div
           className="nodrag"
           style={{
             fontSize: '16px',
@@ -119,12 +122,11 @@ const CustomNode = React.memo(({ data, id, selected }) => {
             textAlign: 'center',
             width: '100%',
             wordWrap: 'break-word',
+            overflowWrap: 'break-word',
             hyphens: 'auto',
-            lineHeight: '1.2',
-            cursor: 'pointer'
+            lineHeight: '1.4',
+            cursor: 'default'
           }}
-          title="Double-click to edit text"
-          onDoubleClick={handleTextDoubleClick}
           data-testid={`node-text-${id}`}
         >
           {label}

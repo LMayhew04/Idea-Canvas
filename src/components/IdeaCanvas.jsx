@@ -199,11 +199,18 @@ const IdeaCanvas = () => {
       data: { ...node.data, showHierarchy: show }
     })));
   }, [setNodes]);
-
   // ====== CANVAS OPERATIONS ======
   const handleTextEdit = useCallback((nodeId, newText) => {
     saveTextEdit(nodeId, newText, onNodeLabelChange);
   }, [saveTextEdit, onNodeLabelChange]);
+
+  // New handler for Edit Text button
+  const handleEditTextButton = useCallback(() => {
+    if (selectedElements.nodes.length === 1) {
+      const selectedNode = selectedElements.nodes[0];
+      openTextEditDialog(selectedNode.id, selectedNode.data.label);
+    }
+  }, [selectedElements, openTextEditDialog]);
 
   const handleLegendLevelClick = useCallback((levelNum) => {
     const selectedNodes = selectedElements.nodes;
@@ -242,7 +249,6 @@ const IdeaCanvas = () => {
     };
     setEdges(eds => addEdge(newEdge, eds));
   }, [setEdges]);
-
   const handleAddNode = useCallback(() => {
     const newNode = {
       id: nextId.toString(),
@@ -255,15 +261,14 @@ const IdeaCanvas = () => {
         label: 'New Idea',
         level: 4,
         hierarchyLevels: HIERARCHY_LEVELS,
-        showHierarchy: showHierarchy,
-        onOpenTextEditor: openTextEditDialog
+        showHierarchy: showHierarchy
       },
       style: { width: 180 }
     };
     
     setNodes(nds => [...nds, newNode]);
     setNextId(prev => prev + 1);
-  }, [nextId, HIERARCHY_LEVELS, showHierarchy, setNodes, openTextEditDialog]);
+  }, [nextId, HIERARCHY_LEVELS, showHierarchy, setNodes]);
 
   const handleDeleteSelected = useCallback(() => {
     const selectedNodeIds = selectedElements.nodes.map(n => n.id);
@@ -291,7 +296,6 @@ const IdeaCanvas = () => {
   const handlePaneClick = useCallback(() => {
     clearSelection();
   }, [clearSelection]);
-
   // ====== PROCESSED NODES/EDGES ======
   const processedNodes = useMemo(() => {
     return nodes.map(node => ({
@@ -299,12 +303,10 @@ const IdeaCanvas = () => {
       data: {
         ...node.data,
         hierarchyLevels: HIERARCHY_LEVELS,
-        showHierarchy: showHierarchy,
-        onOpenTextEditor: openTextEditDialog,
-        onEditText: openTextEditDialog
+        showHierarchy: showHierarchy
       }
     }));
-  }, [nodes, HIERARCHY_LEVELS, showHierarchy, openTextEditDialog]);
+  }, [nodes, HIERARCHY_LEVELS, showHierarchy]);
 
   const processedEdges = useMemo(() => edges, [edges]);
 
@@ -561,8 +563,7 @@ const IdeaCanvas = () => {
 
   // ====== RENDER ======
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', background: '#fafbfc' }}>
-      {/* Controls Panel */}
+    <div style={{ width: '100vw', height: '100vh', position: 'relative', background: '#fafbfc' }}>      {/* Controls Panel */}
       <ControlsPanel
         onAddNode={handleAddNode}
         onOpenHierarchySettings={openHierarchyModal}
@@ -574,6 +575,7 @@ const IdeaCanvas = () => {
         onExport={handleExport}
         onImportFile={handleImport}
         onTriggerImport={triggerImport}
+        onEditText={handleEditTextButton}
         importInputRef={importInputRef}
       />
 
