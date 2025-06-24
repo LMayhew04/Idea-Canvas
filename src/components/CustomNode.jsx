@@ -1,37 +1,30 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Handle, Position } from 'reactflow';
 
 // Custom Node Component
 const CustomNode = React.memo(({ data, id, selected }) => {
-  const onLabelChange = useCallback((evt) => {
-    evt.stopPropagation();
-    if (data.onChange) {
-      data.onChange(id, evt.target.value);
-    }
-  }, [id, data.onChange]);
+  // State for text editing
+  const [label, setLabel] = useState(data.label || 'New Idea');
 
+  // Sync local label state with prop changes  
+  useEffect(() => {
+    setLabel(data.label || 'New Idea');
+  }, [data.label]);  // Handle level change for hierarchy
   const onLevelChange = useCallback((evt) => {
     evt.stopPropagation(); // Prevent event bubbling
     if (data.onLevelChange) {
       data.onLevelChange(id, evt.target.value);
     }
-  }, [id, data.onLevelChange]);  const handleInputClick = useCallback((evt) => {
-    evt.stopPropagation(); // Prevent node selection when clicking input
-    // Ensure the textarea is focused and ready for editing
-    const target = evt.target;
-    setTimeout(() => {
-      target.focus();
-      target.select(); // Select all text for easy editing
-    }, 0);
-  }, []);
+  }, [id, data.onLevelChange]);
 
-  const handleInputFocus = useCallback((evt) => {
-    evt.stopPropagation(); // Prevent node selection when focusing input
-  }, []);
-
-  const handleSelectClick = useCallback((evt) => {
-    evt.stopPropagation(); // Prevent node selection when clicking select
-  }, []);
+  // Fix #1: unified callback lookup
+  const handleTextDoubleClick = useCallback((event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    // prefer onEditText, fallback to onOpenTextEditor
+    const editFn = data.onEditText ?? data.onOpenTextEditor;
+    editFn?.(id, label);
+  }, [id, label, data.onEditText, data.onOpenTextEditor]);
 
   const currentLevel = data.level || 4;
   const levelInfo = data.hierarchyLevels?.[currentLevel] || {
@@ -66,7 +59,8 @@ const CustomNode = React.memo(({ data, id, selected }) => {
           : '0 2px 10px rgba(80, 80, 100, 0.12)',
         position: 'relative',
         transition: 'all 0.2s ease',
-        cursor: 'default'
+        cursor: 'pointer',
+        pointerEvents: 'auto'
       }}
     >{/* Connection Handles - Both source and target handles */}
       {handlePositions.map(({ pos, id: handleId, style }) => (
@@ -109,65 +103,61 @@ const CustomNode = React.memo(({ data, id, selected }) => {
             isConnectable={true}
           />
         </React.Fragment>
-      ))}      {/* Node Label Input */}
-      <div data-no-drag="true" style={{ width: '100%' }}>
-        <textarea
-          key={`textarea-${id}-${data.label}`}
-          className="node-input"
-          value={data.label || ''}
-          onChange={onLabelChange}
-          onClick={handleInputClick}
-          onFocus={handleInputFocus}
-          onMouseDown={handleInputClick}
-          spellCheck={false}
-          placeholder="Enter idea..."
+      ))}      {/* Node Label - Static text, double-click handled by React Flow */}
+      <div 
+        style={{ 
+          width: '100%',
+          position: 'relative',
+          minHeight: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: data.showHierarchy ? '8px' : '0px',
+          padding: '4px',
+          borderRadius: '4px'
+        }}
+      >        <div
+          className="nodrag"
           style={{
-            border: 'none',
-            outline: 'none',
             fontSize: '16px',
-            width: '100%',
-            minHeight: '24px',
-            maxHeight: '100px',
-            background: 'transparent',
-            textAlign: 'center',
             fontWeight: 600,
             color: '#373737',
-            marginBottom: data.showHierarchy ? '8px' : '0px',
-            transition: 'margin-bottom 0.2s ease',
-            resize: 'none',
-            overflow: 'hidden',
-            fontFamily: 'inherit',
-            cursor: 'text',
-            pointerEvents: 'all',
-            userSelect: 'text'
+            textAlign: 'center',
+            width: '100%',
+            wordWrap: 'break-word',
+            hyphens: 'auto',
+            lineHeight: '1.2',
+            cursor: 'pointer'
           }}
-          rows={1}
-          onInput={(e) => {
-            e.stopPropagation();
-            e.target.style.height = 'auto';
-            e.target.style.height = e.target.scrollHeight + 'px';
-          }}
-        />
-      </div>
-        {/* Hierarchy Level Selector - Conditionally Rendered */}
+          title="Double-click to edit text"
+          onDoubleClick={handleTextDoubleClick}
+          data-testid={`node-text-${id}`}
+        >
+          {label}
+        </div>
+      </div>      {/* Hierarchy Level Selector - Conditionally Rendered */}
       {data.showHierarchy && (
         <div 
-          data-no-drag="true"
+          className="nodrag" // Prevent dragging when interacting with select
           style={{
+            position: 'relative',   // <<< added
+            zIndex: 20,             // <<< added
             fontSize: 12,
-            color: levelInfo.color,
+            color: data.hierarchyLevels?.[data.level || 4]?.color,
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
             marginTop: '4px'
           }}
+          onClick={(e) => e.stopPropagation()} // Prevent node selection when clicking dropdown area
+          onMouseDown={(e) => e.stopPropagation()} // Prevent drag initiation
         >
           Level:&nbsp;
           <select
             value={data.level || 4}
             onChange={onLevelChange}
-            onClick={handleSelectClick}
-            onFocus={handleSelectClick}
+            onClick={(e) => e.stopPropagation()} // Prevent event bubbling
+            onMouseDown={(e) => e.stopPropagation()} // Prevent drag initiation
             style={{
               background: levelInfo.bgColor,
               color: levelInfo.color,

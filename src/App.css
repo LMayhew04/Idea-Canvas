@@ -57,3 +57,20 @@
   opacity: 1 !important;
   box-shadow: 0 6px 12px rgba(0,0,0,0.3) !important;
 }
+
+/* React Flow node styling fixes */
+.react-flow__node {
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
+
+.react-flow__node-custom {
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
+
+/* Ensure custom nodes are interactive */
+.custom-node {
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
