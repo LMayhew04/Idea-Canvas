@@ -20,12 +20,16 @@ const CustomNode = React.memo(({ data, id, selected }) => {
     return Math.max(baseHeight, estimatedLines * lineHeight + 40); // 40px for padding
   }, [label]);
 
-  const currentLevel = data.level || 4;
-  const levelInfo = data.hierarchyLevels?.[currentLevel] || {
+  const defaultLevel = {
     name: 'Individual',
     color: '#96ceb4',
     bgColor: '#f0fff4'
   };
+
+  const currentLevel = data.level || 4;
+  const levelInfo = data.showHierarchy
+    ? data.hierarchyLevels?.[currentLevel] || defaultLevel
+    : defaultLevel;
   // 8 compass positions mapped to ReactFlow's Handle positions
   const handlePositions = [
     { pos: Position.Top, id: 'n', style: { left: '50%', top: -6, transform: 'translateX(-50%)' } },

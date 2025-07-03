@@ -269,19 +269,9 @@ const IdeaCanvas = () => {
   }, []);
 
   const isValidConnection = useCallback((connection) => {
-    // Prevent self-connections
-    if (connection.source === connection.target) {
-      return false;
-    }
-    
-    // Check for existing connections
-    const existingEdge = edges.find(edge => 
-      edge.source === connection.source && 
-      edge.target === connection.target
-    );
-    
-    return !existingEdge;
-  }, [edges]);
+    // Only prevent self connections. Allow multiple edges between nodes.
+    return connection.source !== connection.target;
+  }, []);
 
   const onConnect = useCallback((params) => {
     const newEdge = {
